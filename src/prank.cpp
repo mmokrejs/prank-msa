@@ -30,6 +30,14 @@
 #include "check_version.h"
 #include "prank.h"
 
+// Local build marker; empty unless the build defines MSP_PATCHLEVEL, so a
+// stock build prints exactly what upstream prints.
+#include "msp_patchlevel.h"
+#ifndef MSP_PATCHLEVEL
+#define MSP_PATCHLEVEL ""
+#endif
+
+
 using namespace std;
 
 // stores current temporary directory will be created and removed in main
@@ -836,6 +844,8 @@ void readArguments(int argc, char *argv[])
 void printHelp(bool complete)
 {
     cout<<endl<<"prank v."<<version<<". ";
+    if(string(MSP_PATCHLEVEL).length()>0)
+        cout<<endl<<MSP_PATCHLEVEL;
     cout<<"Minimal usage: 'prank sequence_file'"<<endl<<endl;;
     cout<<"Advanced usage: 'prank [optional parameters] -d=sequence_file [optional parameters]'"<<endl;;
     cout<<"\n input/output parameters:"<<endl;

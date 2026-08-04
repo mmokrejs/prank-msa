@@ -1,4 +1,5 @@
 #include "check_version.h"
+#include "msp_patchlevel.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -17,7 +18,12 @@ using namespace std;
 Check_version::Check_version(int version)
 {
 
-    cout<<"\nThis is PRANK v."<<version<<".\nChecking if updates are available at https://github.com/ariloytynoja/prank-msa.\n";
+    cout<<"\nThis is PRANK v."<<version<<".\n";
+#ifdef MSP_PATCHLEVEL
+    if(string(MSP_PATCHLEVEL).length()>0)
+        cout<<MSP_PATCHLEVEL;
+#endif
+    cout<<"Checking if updates are available at https://github.com/ariloytynoja/prank-msa.\n";
 
     struct sockaddr_in *remote;
     char buf[BUFSIZ+1];

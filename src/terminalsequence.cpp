@@ -103,14 +103,27 @@ TerminalSequence::TerminalSequence(string* s)
                 charseq += S.substr(i,3);
             else if (S.substr(i,3)=="---" || S.substr(i,3)=="...")
                 ;
-            else if(i+3<S.length() || PREALIGNED)
-            {
-                charseq += "NNN";
-            }
             else
             {
-//                cout<<"removing: "<<S.substr(i,3)<<endl;
-                stop_removed = true;
+                // An unknown codon -- which includes every STOP codon, since
+                // the codon alphabet is 61-state and stops are not in it.
+                //
+                // Mid-sequence these were already masked as NNN, preserving
+                // the column so a caller can restore the real bases.  A
+                // TERMINAL one was DROPPED instead, silently shortening the
+                // sequence by three: a 3822 nt CDS ending in TAA came back as
+                // 3819 ending ...CATTACACA, and the caller had no column left
+                // to restore into.  Downstream that reads as "the stop codon
+                // was lost" rather than "the model cannot score it".
+                //
+                // Mask it like any other unknown codon.  The alignment is
+                // unaffected -- NNN is what the model already scores for the
+                // mid-sequence case -- but the length is now preserved, so the
+                // terminal stop stays addressable.  The note below still
+                // fires, so the removal is still reported.
+                charseq += "NNN";
+                if(!(i+3<(int)S.length() || PREALIGNED))
+                    stop_removed = true;
             }
         }
 

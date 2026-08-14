@@ -19,12 +19,12 @@
 "    +rndbool-double  PwHirschberg::rndBool() used INTEGER division, so it\n" \
 "                     returned false for every draw but one and its tie-break\n" \
 "                     was inert; the two sibling copies already used double\n" \
-"                     PR pending\n" \
+"                     PR ariloytynoja/prank-msa#33\n" \
 "    +reproducible    -reproducible now implies a fixed seed, so it engages the\n" \
 "                     per-node hash seeding it was always meant to; before, it\n" \
 "                     reseeded from a clock-derived value and was not\n" \
 "                     reproducible, and it was absent from -help entirely\n" \
-"                     PR pending\n" \
+"                     PR ariloytynoja/prank-msa#34\n" \
 "  reproducibility: pass -reproducible (or any -seed=N, N>0). Without one,\n" \
 "    prank seeds from time(0) and equal-scoring DP ties are broken at random:\n" \
 "    measured 7 distinct alignments in 14 runs of one 3.8 kb pair.\n" \

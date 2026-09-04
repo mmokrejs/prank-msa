@@ -85,7 +85,7 @@ TerminalSequence::TerminalSequence(string* s)
         codons.insert(make_pair("---",sAlpha));
 
 
-        bool stop_removed = false;
+        bool stop_masked = false;
 
         string S;
         for (int i=0; i<(int)s->length(); i++)
@@ -119,18 +119,18 @@ TerminalSequence::TerminalSequence(string* s)
                 // Mask it like any other unknown codon.  The alignment is
                 // unaffected -- NNN is what the model already scores for the
                 // mid-sequence case -- but the length is now preserved, so the
-                // terminal stop stays addressable.  The note below still
-                // fires, so the removal is still reported.
+                // terminal stop stays addressable.  It is still reported at
+                // NOISE>0 below, as a masking rather than a removal.
                 charseq += "NNN";
                 if(!(i+3<(int)S.length() || PREALIGNED))
-                    stop_removed = true;
+                    stop_masked = true;
             }
         }
 
         seqLength = realLength = charseq.size()/3;
 
-        if(NOISE>0 && stop_removed)
-            cout<<"Note: stop codon was removed\n";
+        if(NOISE>0 && stop_masked)
+            cout<<"Note: terminal stop codon was masked as 'NNN'\n";
 
         if(NOISE>0 && gaps_removed)
             cout<<"Note: gaps were removed\n";

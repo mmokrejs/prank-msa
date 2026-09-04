@@ -11,11 +11,11 @@
 "                     PR ariloytynoja/prank-msa#32\n" \
 "    +probe-stdin     helper-binary probes no longer inherit stdin; without\n" \
 "                     this, FastTree blocks forever on any non-EOF stdin\n" \
-"                     not submitted upstream yet\n" \
+"                     PR ariloytynoja/prank-msa#37\n" \
 "    +keep-stop       a TERMINAL stop codon is masked NNN, not dropped; the\n" \
 "                     61-state codon alphabet made it vanish, shortening the\n" \
 "                     sequence by 3 with no column left to repair\n" \
-"                     not submitted upstream yet\n" \
+"                     PR ariloytynoja/prank-msa#38\n" \
 "    +rndbool-double  PwHirschberg::rndBool() used INTEGER division, so it\n" \
 "                     returned false for every draw but one and its tie-break\n" \
 "                     was inert; the two sibling copies already used double\n" \

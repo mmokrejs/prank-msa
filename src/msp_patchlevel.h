@@ -4,7 +4,7 @@
 // NOT upstream. Kept on the local/integration branch only, never on the
 // branches that back the pull requests.
 #define MSP_PATCHLEVEL \
-"  local build: mutation_scatter_plot patch set 2026-08-14\n" \
+"  local build: mutation_scatter_plot patch set 2026-09-21\n" \
 "    +cxxflags-O3     fixes CXXFLAG typo that dropped -O3 (~4.3x faster)\n" \
 "                     PR ariloytynoja/prank-msa#31\n" \
 "    +version-check   -version no longer reports a 404 page as \"Found updates\"\n" \
@@ -30,6 +30,24 @@
 "                     reseeded from a clock-derived value and was not\n" \
 "                     reproducible, and it was absent from -help entirely\n" \
 "                     PR ariloytynoja/prank-msa#34\n" \
+"    +mafft-probe     \"is mafft available\" ran `mafft -h` under system(3),\n" \
+"                     and mafft is a SHELL SCRIPT that unpacks itself to\n" \
+"                     print help nobody reads; the probe is issued twice per\n" \
+"                     process. Replaced by a PATH walk: -80 execve, -78\n" \
+"                     clone, -29.7% wall per pair, output byte-identical\n" \
+"                     on 30/30 pairs\n" \
+"                     PR ariloytynoja/prank-msa#40\n" \
+"    +hirschberg-stop an impossible Hirschberg state was PRINTED and then\n" \
+"                     fallen through, seeding no matrix, so getMidSite() read\n" \
+"                     values never written and maxCell.at(0) threw; now\n" \
+"                     exit(-1) with the site and both sequence offsets\n" \
+"                     PR ariloytynoja/prank-msa#35\n" \
+"    +O3-not-dropped  a CXXFLAGS= on the make command line REPLACED the\n" \
+"                     Makefile's flags (make gives the command line\n" \
+"                     precedence, `+=` included), so every build made that\n" \
+"                     way was -O2 despite +cxxflags-O3 above; `override`\n" \
+"                     keeps -O3 and OPTFLAGS is the knob for -O0. Measured\n" \
+"                     worth 4-6% on compute-bound runs\n" \
 "  reproducibility: pass -reproducible (or any -seed=N, N>0). Without one,\n" \
 "    prank seeds from time(0) and equal-scoring DP ties are broken at random:\n" \
 "    measured 7 distinct alignments in 14 runs of one 3.8 kb pair.\n" \

@@ -9,7 +9,101 @@ CXX          ?= g++
 DEFINES       = -DNDEBUG
 CPPFLAGS     += $(DEFINES)
 CFLAGS       += -pipe -O3
-CXXFLAGS     += -pipe -O3
+
+# Optimisation, chosen by measurement rather than by taste. Change it through
+# OPTFLAGS, NOT through CXXFLAGS -- see the "how to override" note below.
+#
+# Measured 2026-09-21, gcc 14.2, all builds from identical sources. Every
+# variant below produced BYTE-IDENTICAL alignments on every input tried, so
+# this is purely a speed question and nothing here can change a result.
+#
+# READ THE NOISE FLOOR BEFORE READING THE NUMBERS. `-ftree-vectorize` is a
+# literal no-op at -O3 (proven below), so the -O3 and -O3-ftree-vectorize
+# binaries are byte-identical and ANY difference measured between them is
+# pure measurement noise. That is the control, and it is what makes the rest
+# interpretable:
+#
+#   wall time, minimum of N runs, vs -O2:
+#                          pair (-codon)   30 seqs (-codon)   genome (-DNA)
+#     time at -O2               0.157 s        21.52 s          18.82 s
+#     -O3                       -0.3%          -6.2%            -4.4%
+#     -O3 -ftree-vectorize      +2.7%          -6.5%            -4.3%
+#     -O3 -flto                 +2.4%          -5.1%            -5.8%
+#     noise floor (control)      3.0 pp         0.3 pp           0.1 pp
+#
+#   So the pair case measures NOTHING -- at 0.157 s its noise floor swamps
+#   every effect. Only the two long runs discriminate, and there -O3 is worth
+#   a real 4-6%. That is why it is kept.
+#
+#   -O3 -flto is NOT kept, and the reason is a trap worth stating. By
+#   INSTRUCTION COUNT (cachegrind, deterministic) it looks like the clear
+#   winner -- -17.6% on the pair case against -3.5% for plain -O3. It is also
+#   2.4% SLOWER there in wall time. Instruction count is not a proxy for time:
+#   LTO's cross-unit inlining removes instructions and pays for them in
+#   I-cache pressure. Nor is the pair case startup-bound, which was the first
+#   explanation offered and was wrong -- getrusage puts 83% of its wall in
+#   USER time. On the two long runs LTO is genuinely mixed: 1.1 pp worse than
+#   plain -O3 on codon, 1.4 pp better on DNA, both outside the noise floor.
+#   A flag that is better at one model and worse at the other, needs matching
+#   LFLAGS at link time, and costs 0.5 s of an 8 s build, is not worth it.
+#
+#   -march=x86-64-v3 is NOT kept, and NOT because the vector registers go
+#   unused -- objdump finds 525 ymm instructions, 95 of them inside
+#   Hirschberg::getMidSite, the hot DP function. They simply do not pay: 0.02
+#   percentage points of instruction count over plain -O3 on a 12-sequence
+#   MSA, i.e. 35 M instructions out of 136 G, because that loop is memory-
+#   and branch-bound rather than arithmetic-bound. Against a SIGILL on any
+#   execution node without AVX2, 0.02% is not a trade worth making.
+#
+#   -ftree-vectorize is NOT added, because at -O3 it does nothing at all:
+#   `-O3` and `-O3 -ftree-vectorize` give byte-identical disassembly and the
+#   same .text size (0xdf5d5). It is NOT redundant at -O2, where it lifts the
+#   vectoriser cost model from very-cheap to cheap -- but this build is -O3.
+#   (Do not trust `gcc -Q --help=optimizers` here: it reports the flag as
+#   [disabled] at both levels, which is why this was checked against the
+#   emitted code instead.)
+#
+#   -Ofast is NOT kept, and this is the one to leave alone regardless of its
+#   numbers (which are: no gain over -O3). It implies -ffast-math, permitting
+#   floating-point reassociation; PRANK's Hirschberg DP picks a path by
+#   comparing accumulated log-probabilities, so a moved last bit can flip a
+#   tie and shift a gap.
+#
+# -ggdb is deliberate and costs no run time: it only adds debug info to the
+# binary. It is what makes a core file from a cluster run readable, and those
+# cores are the only evidence available when a batch dies on an execution node.
+#
+# NOT included on purpose: -w. It silences every warning, and this build emits
+# 26 "no return statement in function returning non-void". They are all the
+# SAME function, re-reported once per translation unit that includes the
+# header: treenode.h:365, `virtual bool updateInsertionSite(int, bool) {}` --
+# a bool returning nothing, which is undefined behaviour if reached. It is not
+# reachable (TreeNode has exactly two subclasses, both override it, and
+# TreeNode is never instantiated), which is the specific ground on which
+# raising -O2 to -O3 is safe here rather than merely "the output did not
+# change". Add -w to a command line if you want a quiet build; do not bake it
+# in here, or the next such warning is invisible too.
+OPTFLAGS     ?= -std=c++11 -pipe -O3 -ggdb
+
+# HOW TO OVERRIDE, and why this is `override` rather than a plain `+=`.
+#
+# make gives a variable set on the COMMAND LINE precedence over any assignment
+# in the makefile, `+=` included. So the obvious-looking
+#
+#     make CXXFLAGS="-std=c++11 -pipe -w -O2 -ggdb"
+#
+# does not ADD to the line above, it REPLACES it -- and every such build was
+# silently an -O2 build, discarding the -O3 this file has asked for since the
+# CXXFLAG/CXXFLAGS typo was fixed. That is how the optimisation was lost once
+# already, with nothing in the output to show it.
+#
+# `override` makes the flags above survive such a command line. They are
+# appended last, and gcc honours the LAST -O it is given, so an accidental
+# -O2 on the command line no longer wins. To build unoptimised on purpose,
+# set the knob that is meant for it:
+#
+#     make OPTFLAGS="-std=c++11 -pipe -O0 -ggdb"
+override CXXFLAGS += $(OPTFLAGS)
 # -I. only. An explicit -I/usr/include is redundant with any compiler's own
 # search path, and actively wrong when the compiler is not the system one:
 # it forces the SYSTEM libc headers into a build whose libstdc++ came from

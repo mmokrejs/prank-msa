@@ -416,6 +416,7 @@ progressivealignment.o: progressivealignment.cpp readnewick.h \
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $(INCPATH) -o progressivealignment.o progressivealignment.cpp
 
 prank.o: prank.cpp progressivealignment.h \
+		msp_patchlevel.h \
 		config.h \
 		hmmodel.h \
 		dbmatrix.h \
@@ -593,7 +594,7 @@ ancestralnode.o: ancestralnode.cpp config.h \
 		readalignment.h
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $(INCPATH) -o ancestralnode.o ancestralnode.cpp
 
-check_version.o: check_version.cpp check_version.h
+check_version.o: check_version.cpp check_version.h msp_patchlevel.h
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $(INCPATH) -o check_version.o check_version.cpp
 
 exonerate_reads.o: exonerate_reads.cpp exonerate_reads.h \

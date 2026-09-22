@@ -95,11 +95,19 @@ void Mafft_alignment::align_sequences(vector<string> *names,vector<string> *sequ
     }
     m_output.close();
 
+    // mafft writes its progress to stderr, so stderr cannot be folded into
+    // the stdout this function parses -- but discarding it means a failure
+    // arrives with no reason attached. Keep it in a file beside the input
+    // instead: it is read only if the alignment comes back empty, and it is
+    // then the stderr OF THE RUN THAT FAILED rather than of a second run.
+    stringstream e_name;
+    e_name <<tmp_dir<<"/m"<<r<<".err";
+
     stringstream command;
     if (PROTEIN) {
-        command << mafftpath<<"mafft --amino "<<tmp_dir<<"/m"<<r<<".fas 2> /dev/null";
+        command << mafftpath<<"mafft --amino "<<tmp_dir<<"/m"<<r<<".fas 2> "<<e_name.str();
     }else{
-        command << mafftpath<<"mafft "<<tmp_dir<<"/m"<<r<<".fas 2> /dev/null";
+        command << mafftpath<<"mafft "<<tmp_dir<<"/m"<<r<<".fas 2> "<<e_name.str();
     }
     if(NOISE>0)
         cout<<"cmd: "<<command.str()<<endl;
@@ -172,19 +180,39 @@ void Mafft_alignment::align_sequences(vector<string> *names,vector<string> *sequ
     if(sequences->size()==0)
     {
 
-        cout<<"\nError: Initial alignment with Mafft failed. The output generated was:\n";
+        cerr<<"\nError: Initial alignment with Mafft failed. The output generated was:\n";
 
-        command.str("");
-        command << mafftpath<<"mafft "<<tmp_dir<<"/m"<<r<<".fas 2>&1";
+        // Report the stderr already captured above. Running mafft a SECOND
+        // time to find out why the first failed costs a whole alignment and
+        // can print a different failure than the one that happened.
+        ifstream e_file(e_name.str().c_str());
+        if(e_file)
+        {
+            string line;
+            while(getline(e_file,line))
+                cerr<<line<<endl;
+            e_file.close();
+        }
+        else
+        {
+            cerr<<"(mafft produced no diagnostic output)"<<endl;
+        }
 
-        int i = system(command.str().c_str());
+        cerr<<"\nNow exiting.\n";
 
-        cout<<"\nNow exiting.\n";
-        exit(0);
+        remove( m_name.str().c_str() );
+        remove( e_name.str().c_str() );
+
+        // Exit NON-ZERO. This is a failure, and prank is invoked per
+        // sequence pair by callers that branch on the exit status; exiting 0
+        // reported a misconfigured mafft as a successful run that happened
+        // to produce nothing.
+        exit(1);
     }
 
     //remove file
     if( remove( m_name.str().c_str() ) != 0)
       perror("Error deleting temporary file in Mafft_alignment::align_sequences");
+    remove( e_name.str().c_str() );
 
 }

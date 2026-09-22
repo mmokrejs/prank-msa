@@ -48,6 +48,13 @@
 "                     way was -O2 despite +cxxflags-O3 above; `override`\n" \
 "                     keeps -O3 and OPTFLAGS is the knob for -O0. Measured\n" \
 "                     worth 4-6% on compute-bound runs\n" \
+"    +mafft-failure   a failed initial alignment discarded mafft's stderr and\n" \
+"                     then ran the WHOLE alignment again with 2>&1 to find\n" \
+"                     out why, reporting a SECOND run's error on stdout, and\n" \
+"                     then exit(0) -- so a prank that aligned nothing\n" \
+"                     reported success. The failing run's own stderr is kept\n" \
+"                     and reported on stderr; exit is 1\n" \
+"                     PR ariloytynoja/prank-msa#TBD\n" \
 "  reproducibility: pass -reproducible (or any -seed=N, N>0). Without one,\n" \
 "    prank seeds from time(0) and equal-scoring DP ties are broken at random:\n" \
 "    measured 7 distinct alignments in 14 runs of one 3.8 kb pair.\n" \

@@ -55,6 +55,11 @@
 "                     reported success. The failing run's own stderr is kept\n" \
 "                     and reported on stderr; exit is 1\n" \
 "                     PR ariloytynoja/prank-msa#TBD\n" \
+"    +tool-probes     the exonerate and raxml probes RAN those binaries to\n" \
+"                     ask whether they exist, twice each per process; they\n" \
+"                     now use the same PATH walk as +mafft-probe. -11 execve\n" \
+"                     per pair on top of it, alignment byte-identical\n" \
+"                     PR ariloytynoja/prank-msa#TBD\n" \
 "  reproducibility: pass -reproducible (or any -seed=N, N>0). Without one,\n" \
 "    prank seeds from time(0) and equal-scoring DP ties are broken at random:\n" \
 "    measured 7 distinct alignments in 14 runs of one 3.8 kb pair.\n" \

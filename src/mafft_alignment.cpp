@@ -7,6 +7,7 @@
 #include "config.h"
 #include <algorithm>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #if defined (__APPLE__)
 #include <mach-o/dyld.h>
@@ -57,10 +58,6 @@ bool Mafft_alignment::test_executable()
     // `system("mafft -h ...")` calls this replaces cost ~80 further execs
     // between them -- see tool_probe.h for the measurement and for what the
     // change gives up.
-    //
-    // This also supersedes the `</dev/null` added here by the probe-stdin
-    // fix: nothing is run, so nothing can inherit the terminal. The Cygwin
-    // branch above still runs sh.exe and keeps its redirection.
     return prank_tool_probe::find_tool(epath, "mafft", &mafftpath);
 
     #endif
@@ -174,19 +171,32 @@ void Mafft_alignment::align_sequences(vector<string> *names,vector<string> *sequ
         sequences->push_back(sequence);
     }
 
-    pclose(fpipe);
+    // A non-zero exit or a signal is a failure even if something was printed:
+    // a partial alignment must not be used as if it were the whole one.
+    int mafft_status = pclose(fpipe);
+    bool mafft_ok = mafft_status != -1 && WIFEXITED(mafft_status)
+                    && WEXITSTATUS(mafft_status) == 0;
 
-
-    if(sequences->size()==0)
+    if(sequences->size()==0 || !mafft_ok)
     {
 
-        cerr<<"\nError: Initial alignment with Mafft failed. The output generated was:\n";
+        cerr<<"\nError: Initial alignment with Mafft failed";
+        if(mafft_status == -1)
+            cerr<<" (its exit status could not be read)";
+        else if(WIFSIGNALED(mafft_status))
+            cerr<<" (killed by signal "<<WTERMSIG(mafft_status)<<")";
+        else if(WEXITSTATUS(mafft_status) != 0)
+            cerr<<" (exit status "<<WEXITSTATUS(mafft_status)<<")";
+        else
+            cerr<<" (it returned no sequences)";
+        cerr<<". mafft's error output was:\n";
 
         // Report the stderr already captured above. Running mafft a SECOND
         // time to find out why the first failed costs a whole alignment and
         // can print a different failure than the one that happened.
+        // The shell creates the file even when mafft writes nothing to it.
         ifstream e_file(e_name.str().c_str());
-        if(e_file)
+        if(e_file && e_file.peek() != EOF)
         {
             string line;
             while(getline(e_file,line))
@@ -202,6 +212,8 @@ void Mafft_alignment::align_sequences(vector<string> *names,vector<string> *sequ
 
         remove( m_name.str().c_str() );
         remove( e_name.str().c_str() );
+        // exit() below skips main()'s own rmdir() of this run's directory.
+        rmdir( tmp_dir );
 
         // Exit NON-ZERO. This is a failure, and prank is invoked per
         // sequence pair by callers that branch on the exit status; exiting 0

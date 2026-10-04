@@ -20,7 +20,6 @@
 
 #include "fasttree_tree.h"
 #include <netdb.h>
-#include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
@@ -39,6 +38,20 @@ FastTree_tree::FastTree_tree()
 {
 }
 
+// The FastTree program as ONE shell word, for the system()/popen() command
+// lines below. -fasttree=NAME may be a path, and a path may hold a space or a
+// quote; unquoted, the shell would split it and the probe would report
+// FastTree absent. A value with a '/' is used as given; a bare name is
+// prefixed with `prefix`, the directory being tried ("" for a PATH lookup).
+static string fasttree_command(const string &prefix)
+{
+    string prog = fasttreeexec.find('/') != string::npos ? fasttreeexec : prefix + fasttreeexec;
+    string quoted = "'";
+    for(size_t i = 0; i < prog.size(); i++)
+        quoted += prog[i] == '\'' ? string("'\\''") : string(1, prog[i]);
+    return quoted + "'";
+}
+
 bool FastTree_tree::test_executable()
 {
     #if defined (__CYGWIN__)
@@ -50,8 +63,7 @@ bool FastTree_tree::test_executable()
     if (epath.find("/")!=std::string::npos)
         epath = epath.substr(0,epath.rfind("/")+1);
     progpath = epath;
-    epath = epath+fasttreeexec+" -help </dev/null >/dev/null 2>/dev/null";
-    int status = system(epath.c_str());
+    int status = system((fasttree_command(epath)+" -help </dev/null >/dev/null 2>/dev/null").c_str());
 
     return WEXITSTATUS(status) == 0;
 
@@ -97,14 +109,18 @@ bool FastTree_tree::test_executable()
     //
     // stdin stays redirected: harmless here since `-help` returns before
     // reading input, and it keeps every probe in this file consistent.
-    progpath = epath;
-    epath = epath+fasttreeexec+" -help </dev/null >/dev/null 2>/dev/null";
-    int status = system(epath.c_str());
-    if(WEXITSTATUS(status) == 0)
-        return true;
+    // Beside prank's binary first, unless the executable was named by path.
+    int status;
+    if(fasttreeexec.find('/') == string::npos)
+    {
+        progpath = epath;
+        status = system((fasttree_command(epath)+" -help </dev/null >/dev/null 2>/dev/null").c_str());
+        if(WEXITSTATUS(status) == 0)
+            return true;
+    }
 
     progpath = "";
-    status = system((fasttreeexec+" -help </dev/null >/dev/null 2>/dev/null").c_str());
+    status = system((fasttree_command("")+" -help </dev/null >/dev/null 2>/dev/null").c_str());
 
     return WEXITSTATUS(status) == 0;
 
@@ -142,7 +158,7 @@ string FastTree_tree::infer_phylogeny(std::vector<string> *names,std::vector<str
     f_output.close();
 
     stringstream command;
-    command << progpath<<fasttreeexec<<" -quiet -nopr -nosupport ";
+    command << fasttree_command(progpath)<<" -quiet -nopr -nosupport ";
     if(is_protein)
         command << f_name.str() << " 2>/dev/null";
     else

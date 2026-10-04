@@ -563,7 +563,14 @@ void readArguments(int argc, char *argv[])
             // seed for random number generator
             else if (s.substr(0,6)=="-seed=")
             {
+                // Only a positive seed is used (rnd_seed<=0 means "none"), so a
+                // zero or negative one would be ignored without a word.
                 rnd_seed = atoi(string(argv[i]).substr(6).c_str());
+                if (rnd_seed <= 0)
+                {
+                    cout<<"Error: -seed= needs a positive integer."<<endl;
+                    exit(EXIT_FAILURE);
+                }
             }
 
             else if (s=="-reproducible")
@@ -788,11 +795,16 @@ void readArguments(int argc, char *argv[])
             // FastTreeUPGMA computes UPGMA rather than approximately-ML trees.
             //
             // Tested before it is used, so a bad value falls back to prank's
-            // own guide tree exactly as a missing FastTree does.
+            // own guide tree exactly as a missing FastTree does. It only names
+            // the program: it does not undo -nofasttree, in either order.
             else if (s.substr(0,10)=="-fasttree=")
             {
                 fasttreeexec = string(argv[i]).substr(10);
-                FASTTREE = true;
+                if (fasttreeexec.empty())
+                {
+                    cout<<"Error: -fasttree= needs the name or path of the FastTree executable."<<endl;
+                    exit(EXIT_FAILURE);
+                }
             }
 
             // use FastTree for guidetree computation
@@ -852,8 +864,11 @@ void readArguments(int argc, char *argv[])
     // reproducible. Supplying a fixed default here also switches on the
     // deterministic per-node seeding already present in
     // AncestralNode::alignSequences (gated on rnd_seed>0), which derives each
-    // node's seed from a hash of its terminal names and is therefore
-    // independent of node visit order. An explicit -seed=# still wins.
+    // node's seed from a hash of its terminal names, so for a given guide tree
+    // the result does not depend on the order the nodes are visited. (A guide
+    // tree inferred from the input can itself depend on the input order.)
+    // Every tie is then broken the same way on every run -- which need not be
+    // any of the alignments unseeded runs produce. An explicit -seed=# wins.
     if (REPRODUCIBLE && rnd_seed<=0)
         rnd_seed = 1;
 
@@ -952,8 +967,8 @@ void printHelp(bool complete)
         cout<<"  -fixedbranches=# [use fixed branch lengths]"<<endl;
         cout<<"  -maxbranches=# [set maximum branch length]"<<endl;
         cout<<"  -realbranches [disable branch length truncation]"<<endl;
-        cout<<"  -seed=# [set random number seed; without it the seed comes from the clock]"<<endl;
-        cout<<"  -reproducible [repeatable output: implies a fixed seed unless -seed=# is given]"<<endl;
+        cout<<"  -seed=# [set random number seed, a positive integer; without it the seed comes from the clock]"<<endl;
+        cout<<"  -reproducible [repeatable output: ties broken the same way every run; a fixed seed unless -seed=# is given]"<<endl;
     }
     cout<<"  -translate [translate to protein]"<<endl;
     cout<<"  -mttranslate [translate to protein using mt table]"<<endl;

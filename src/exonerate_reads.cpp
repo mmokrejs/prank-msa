@@ -37,7 +37,7 @@ bool Exonerate_reads::test_executable()
     if (epath.find("/")!=std::string::npos)
         epath = epath.substr(0,epath.rfind("/")+1);
     exoneratepath = epath;
-    epath = epath+"exonerate.exe > /dev/null 2>/dev/null";
+    epath = epath+"exonerate.exe </dev/null >/dev/null 2>/dev/null";
     status = system(epath.c_str());
 
     if(WEXITSTATUS(status) == 1) {

@@ -85,7 +85,7 @@ TerminalSequence::TerminalSequence(string* s)
         codons.insert(make_pair("---",sAlpha));
 
 
-        bool stop_masked = false;
+        bool last_codon_masked = false;
 
         string S;
         for (int i=0; i<(int)s->length(); i++)
@@ -116,21 +116,22 @@ TerminalSequence::TerminalSequence(string* s)
                 // to restore into.  Downstream that reads as "the stop codon
                 // was lost" rather than "the model cannot score it".
                 //
-                // Mask it like any other unknown codon.  The alignment is
-                // unaffected -- NNN is what the model already scores for the
-                // mid-sequence case -- but the length is now preserved, so the
-                // terminal stop stays addressable.  It is still reported at
-                // NOISE>0 below, as a masking rather than a removal.
+                // Mask it like any other unknown codon, so the length is
+                // preserved and the terminal codon stays addressable.  What
+                // is WRITTEN there is 'NNN', not the input's bases -- prank
+                // writes the sequence it aligned -- and the alignment has that
+                // column, scored as an unknown codon as mid-sequence ones are.
+                // Reported at NOISE>0 below, prealigned input included.
                 charseq += "NNN";
-                if(!(i+3<(int)S.length() || PREALIGNED))
-                    stop_masked = true;
+                if(i+3>=(int)S.length())
+                    last_codon_masked = true;
             }
         }
 
         seqLength = realLength = charseq.size()/3;
 
-        if(NOISE>0 && stop_masked)
-            cout<<"Note: terminal stop codon was masked as 'NNN'\n";
+        if(NOISE>0 && last_codon_masked)
+            cout<<"Note: the last codon is not in the codon model (a stop codon?) and is written as 'NNN'\n";
 
         if(NOISE>0 && gaps_removed)
             cout<<"Note: gaps were removed\n";

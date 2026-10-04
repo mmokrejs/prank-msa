@@ -28,10 +28,15 @@
  * some callers, so that fraction is paid per pair, and on a network
  * filesystem each of those execs is a remote lookup as well.
  *
- * WHAT IS GIVEN UP, STATED PLAINLY. system(3) is `/bin/sh -c`, which locates a
- * command by walking $PATH exactly as this does, so nothing that could be found
- * before becomes unfindable. What is no longer established is "...and it exits
- * with the status this particular probe expects". A tool that is present and
+ * HOW IT LOOKS. Like the shell's own command search: the first REGULAR file
+ * with execute permission, beside prank's binary first, then along $PATH (an
+ * empty element is the current directory; an unset $PATH is the system
+ * default path, as the shell uses). A directory of the same name does not
+ * count. access(2) checks the real rather than the effective user, which only
+ * differs for a set-uid prank.
+ *
+ * WHAT IS GIVEN UP, STATED PLAINLY. What is no longer established is "...and
+ * it exits with the status this particular probe expects". A tool that is present and
  * executable but broken now reports AVAILABLE and fails at the real invocation,
  * where the failure is visible, instead of reporting absent and having prank
  * silently continue without it. That direction was chosen deliberately: a
@@ -47,10 +52,18 @@
 #include <string>
 #include <map>
 #include <cstdlib>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace prank_tool_probe
 {
+
+inline bool is_executable_file(const std::string &path)
+{
+    struct stat st;
+    return stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode)
+           && access(path.c_str(), X_OK) == 0;
+}
 
 /*
  * Is <tool> executable in <dir>, or on $PATH?
@@ -84,8 +97,7 @@ inline bool find_tool(const std::string &dir, const std::string &tool,
 
     if (!dir.empty())
     {
-        std::string candidate = dir + tool;
-        if (access(candidate.c_str(), X_OK) == 0)
+        if (is_executable_file(dir + tool))
         {
             ok = true;
             where = dir;
@@ -94,10 +106,23 @@ inline bool find_tool(const std::string &dir, const std::string &tool,
 
     if (!ok)
     {
+        std::string path;
         const char *path_env = getenv("PATH");
         if (path_env != 0)
+            path = path_env;
+        else
         {
-            std::string path(path_env);
+            size_t n = confstr(_CS_PATH, NULL, 0);
+            if (n > 0)
+            {
+                std::string def(n, '\0');
+                confstr(_CS_PATH, &def[0], n);
+                path = def.c_str();
+            }
+            else
+                path = "/bin:/usr/bin";
+        }
+        {
             std::string::size_type start = 0;
             while (start <= path.size())
             {
@@ -112,8 +137,7 @@ inline bool find_tool(const std::string &dir, const std::string &tool,
                 if (element[element.size() - 1] != '/')
                     element += '/';
 
-                std::string candidate = element + tool;
-                if (access(candidate.c_str(), X_OK) == 0)
+                if (is_executable_file(element + tool))
                 {
                     ok = true;
                     where = "";          // invoked by bare name, as before

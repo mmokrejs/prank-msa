@@ -1,0 +1,4 @@
+# Build output. Upstream tracks none of this; it was committed by accident in
+# f886385 alongside the patchlevel marker and shipped 37 binaries to GitHub.
+*.o
+/src/prank

@@ -1,4 +1,5 @@
 #include "check_version.h"
+#include "msp_patchlevel.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -20,7 +21,12 @@ Check_version::Check_version(int version)
     // Say which server is asked. The version file is still fetched from the
     // old Google Code host, which no longer serves it (see the status check
     // below); the project itself lives on GitHub.
-    cout<<"\nThis is PRANK v."<<version<<".\nChecking if updates are available at prank-msa.googlecode.com"
+    cout<<"\nThis is PRANK v."<<version<<".\n";
+#ifdef MSP_PATCHLEVEL
+    if(string(MSP_PATCHLEVEL).length()>0)
+        cout<<MSP_PATCHLEVEL;
+#endif
+    cout<<"Checking if updates are available at prank-msa.googlecode.com"
         <<" (PRANK is developed at https://github.com/ariloytynoja/prank-msa).\n";
 
     struct sockaddr_in *remote;
